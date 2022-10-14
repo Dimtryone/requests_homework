@@ -1,0 +1,130 @@
+import requests
+import json
+import datetime
+
+print('Задача №1')
+#Кто самый умный супергерой?
+#Есть API по информации о супергероях с информацией по всем супергероям.
+#Нужно определить кто самый умный(intelligence) из трех супергероев- Hulk, Captain America, Thanos.
+
+def get_superhero():
+    URL = 'https://akabab.github.io/superhero-api/api/all.json'
+    responce = requests.get(URL)
+    if responce.status_code == 200:
+        responce = responce.text
+        responce = json.loads(responce)
+        return responce
+    else:
+        message = 'Error connect with server'
+        return message
+
+def get_best_superhero(list_name: list, super_heros: list, powerstats: str) -> list:
+    dict_heros = {}
+    for item in super_heros:
+        name = item['name']
+        if len(list_name) == 0:
+            break
+        if name in list_name:
+            key = name
+            list_name.remove(name)
+            dict_powerstats = item['powerstats']
+            value = dict_powerstats['intelligence']
+            dict_heros[key] = value
+        else:
+            continue
+
+    if len(dict_heros) == 0:
+        return f'По заданным параметрам {list_name}, {powerstats} на сайте нет героев для сравнения'
+    else:
+        dict_heros_revers = {}
+        for key, value in dict_heros.items():
+            if value not in dict_heros_revers:
+                dict_heros_revers[value] = [key]
+            else:
+                list_key = dict_heros_revers[value]
+                list_key.append(key)
+                dict_heros_revers[value] = list_key
+        list_powerstats_value = []
+        for value in dict_heros.values():     #
+            list_powerstats_value.append(value)
+        max_value = max(list_powerstats_value)
+        list_best_super_hero = dict_heros_revers[max_value]
+        return f'лучшие супер герои {list_best_super_hero}'
+
+super_heros = get_superhero()
+list_name = ['Hulk', 'Captain America', 'Thanos', 'Ant-Man']
+powerstats = 'intelligence'
+if type(super_heros) is list:
+    print(get_best_superhero(list_name, super_heros, powerstats))
+else:
+    print('Не получена информация от сервера, попробуйте позже')
+
+print('Задача №2')
+#У Яндекс.Диска есть очень удобное и простое API. Для описания всех его методов существует Полигон.
+# Нужно написать программу, которая принимает на вход путь до файла на компьютере и сохраняет
+# на Яндекс.Диск с таким же именем.
+class YaUploader:
+
+    URL_UPLOAD = 'https://cloud-api.yandex.net:443/v1/disk/resources/upload'
+
+    def __init__(self, token: str, name_file: str):
+        self.token = token
+        self.path = ''
+        self.name_file = name_file
+
+    def _get_path_to_file(self):
+        import os
+        BASE_DIR = os.getcwd()
+        self.path = os.path.join(BASE_DIR, self.name_file)
+        return self.path
+
+    def _get_url_upload(self):
+        headers = {'Authorization': f'OAuth {self.token}'}
+        params = {'path': self.name_file, 'overwrite': True}
+        response = requests.get(self.URL_UPLOAD, headers=headers, params=params)
+        if response.status_code == 200:
+            url_upload = response.json().get('href')
+            return url_upload
+        else:
+            message = 'Error connect with server'
+            return message
+
+    def upload(self):
+        url_upload = self._get_url_upload()
+        if url_upload == 'Error connect with server':
+            message = 'не удалось получить ссылку для загрузки файла'
+            print(message)
+            return message
+        file_path = self._get_path_to_file()
+        with open(file_path, 'rb') as file:
+            response = requests.put(url_upload, data = file )
+            if response.status_code == 201:
+                print('файл успешно загружен')
+            else:
+                print('файл не загружен')
+
+name_file_for_upload = input('введите полное имя файла для загрузки: ')
+token = input('введите токен от вашего яндекс диска:  ')
+uploader = YaUploader(token, name_file_for_upload)
+uploader.upload()
+
+print('Задача №3')
+#Самый важный сайт для программистов это stackoverflow. И у него тоже есть API Нужно написать программу, которая
+#1 выводит все вопросы за последние два дня и содержит тэг 'Python'. Для этого задания токен не требуется.
+
+day_now = datetime.date.today()
+delta = datetime.timedelta(2)
+from_day = day_now - delta
+params = {'fromdate': from_day, 'todate': day_now ,'tagged': 'Python', 'site': 'stackoverflow'}
+headers = {'Accept-Encoding': 'GZIP'}
+url = 'https://api.stackexchange.com/2.3/questions'
+response = requests.get(url=url, params=params, headers=headers)
+if response.status_code != 200:
+    print('Не удалось получить список вопросов')
+else:
+    items_list = response.json().get('items')
+    num = 0
+    for item in items_list:
+        num += 1
+        print(f'{num} {item["title"]}')
+
